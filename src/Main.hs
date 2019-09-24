@@ -131,7 +131,7 @@ matches = matches' . first where
     matches' zs (c:cs) = matches' (zs >>= step c) cs
 
 reComplexity :: RE -> Int
-reComplexity = go 0 where
+reComplexity = (8*) . go 0 where
     go n (Star r) = go (n+1) r
     go n (And l r) = go (go (n+1) l) r
     go n (Or l r) = go (go (n+1) l) r
@@ -139,7 +139,7 @@ reComplexity = go 0 where
     go n (Lit _) = n+1
 
 preComplexity :: PRE -> Int
-preComplexity = go 0 where
+preComplexity = (8*) . go 0 where
     go n (PStar r) = go (n+1) r
     go n (PAnd l r) = go (go (n+1) l) r
     go n (POr l r) = go (go (n+1) l) r
@@ -148,7 +148,10 @@ preComplexity = go 0 where
     go n Seed = n+1
 
 traceComplexity :: [Trace] -> Int
-traceComplexity = length
+traceComplexity = sum . map go where
+  go LitMatch = 0
+  go (WildcardMatch _) = 8
+  go _ = 1
 
 complexity :: RE -> [Trace] -> Int
 complexity re tr = reComplexity re + traceComplexity tr
@@ -183,7 +186,7 @@ findBest ((_, re, tr):rest) = go (complexity re  tr, re, tr) rest where
         else best
 
 main = do
-  print $ findBest $ allMatching "aa"
+  print =<< findBest <$> allMatching <$> getLine
 
 --traverse print $ take 100 $ allMatching "ababab"
 
