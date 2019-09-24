@@ -1,5 +1,4 @@
 import Control.Monad
-import Data.List
 import Data.Ord
 import Safe
 import qualified Data.IntMap.Strict as Map
@@ -64,9 +63,9 @@ applyContext r (CRAnd l) = And l r
 applyContext l (CLOr r) = Or l r
 applyContext r (CROr l) = Or l r
 
-unzip :: REZipper -> RE
-unzip (REZipper contextStack (LLit c)) = foldl applyContext (Lit c) contextStack
-unzip (REZipper contextStack LWildcard) = foldl applyContext Wildcard contextStack
+unzipRE :: REZipper -> RE
+unzipRE (REZipper contextStack (LLit c)) = foldl applyContext (Lit c) contextStack
+unzipRE (REZipper contextStack LWildcard) = foldl applyContext Wildcard contextStack
 
 data Trace
     = LitMatch
@@ -123,7 +122,7 @@ isTerminal (REZipper ctx _) = all isTerminal' ctx where
 matches :: RE -> String -> [[Trace]]
 matches = matches' . first where
     matches' :: [(REZipper, [Trace])] -> String -> [[Trace]]
-    matches' zs [] = []
+    matches' _ [] = []
     matches' zs [c] = matchesFinal =<< zs where
         matchesFinal :: (REZipper, [Trace]) -> [[Trace]]
         matchesFinal (z@(REZipper _ LWildcard), tr) = guard (isTerminal z) >> [tr ++ [WildcardMatch c] ]
@@ -169,15 +168,17 @@ pushMatch str r = case bestMatch (reify r) str of
 allMatching :: String -> [(Int, RE, [Trace])]
 allMatching str = go $ pushMatch str Seed Map.empty where
     go m = let
-        ((preComplexity, best), m') = Map.deleteFindMin m
+        ((pc, best), m') = Map.deleteFindMin m
         new = best >>= (\ (re, _) -> dumbExpand re)
-        in map (\ (pre, tr) -> (preComplexity, reify pre, tr)) best
+        in map (\ (pre, tr) -> (pc, reify pre, tr)) best
             ++ go (foldr (pushMatch str) m' new)
 
 findBest :: [(Int, RE, [Trace])] -> (Int, RE, [Trace])
-findBest ((_, re, tr):rest) = go (complexity re  tr, re, tr) rest where
-    go best@(bestComplexity, _, _) ((preComplexity, re, tr): rest) =
-        if preComplexity < bestComplexity
+findBest [] = error "findBest should only be called on an infinite list"
+findBest ((_, reOuter, trOuter):restOuter) = go (complexity reOuter  trOuter, reOuter, trOuter) restOuter where
+    go _ [] = error "findBest should only be called on an infinite list"
+    go best@(bestComplexity, _, _) ((pc, re, tr): rest) =
+        if pc < bestComplexity
         then let
             c = complexity re tr
             in if c < bestComplexity
@@ -185,6 +186,7 @@ findBest ((_, re, tr):rest) = go (complexity re  tr, re, tr) rest where
             else go best rest
         else best
 
+main :: IO ()
 main = do
   print =<< findBest <$> allMatching <$> getLine
 
