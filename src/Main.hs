@@ -182,11 +182,8 @@ findBest ((_, re, tr):rest) = go (complexity re  tr, re, tr) rest where
             else go best rest
         else best
 
-let
-    (_, re, tr) = head $ allMatching "aa"
-    in complexity re tr
-
-findBest $ allMatching "aa"
+main = do
+  print $ findBest $ allMatching "aa"
 
 --traverse print $ take 100 $ allMatching "ababab"
 
